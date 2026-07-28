@@ -1,29 +1,39 @@
-% This Matlab file is used to compare IS_Krylov_PS, IS_Krylov_CS, IS_Krylov_GS, and IS_Krylov_SRHT
-
+%% Figure 1: Comparison of different types of sketches
+% This demo reproduces Figure 1 in the paper.
+%
+% It compares four variants of the IS-Krylov method:
+% IS-Krylov-PS, IS-Krylov-CS, IS-Krylov-GS, and IS-Krylov-SRHT.
+% Uniform sampling is not plotted separately because it generates the
+% same iteration scheme as the CountSketch-type sampling considered here.
+%
+% The plots show the evolution of the relative solution error (RSE)
+% with respect to the number of iterations and the CPU time.
+% The solid curves report the medians over 20 independent trials;
+% the shaded regions show the min-max and interquartile ranges.
 clear
 close all
 
 %% setup
-m=256; % number of rows
+m=512; % number of rows
 n=128; % number of columns
-r=128; % number of rank
-kappa=100; % upper bound for the condition number
-q=30; % size of the block
+r=100; % number of rank
+kappa=50; % upper bound for the condition number
+q=32; % size of the block
 run_time=20;  % average times
-Max_length=3000; % max iterations
-
+Max_length=1000; % max iterations
+CPU_max=0.3;
 %% some vectors are used to store the computed results
-IS_Krylov_PS_CPU=zeros(run_time,Max_length+1);
-IS_Krylov_PS_error=zeros(run_time,Max_length+1);
+IS_Krylov_PS_CPU=nan(run_time,Max_length+1);
+IS_Krylov_PS_error=nan(run_time,Max_length+1);
 
-IS_Krylov_CS_CPU=zeros(run_time,Max_length+1);
-IS_Krylov_CS_error=zeros(run_time,Max_length+1);
+IS_Krylov_CS_CPU=nan(run_time,Max_length+1);
+IS_Krylov_CS_error=nan(run_time,Max_length+1);
 
-IS_Krylov_GS_CPU=zeros(run_time,Max_length+1);
-IS_Krylov_GS_error=zeros(run_time,Max_length+1);
+IS_Krylov_GS_CPU=nan(run_time,Max_length+1);
+IS_Krylov_GS_error=nan(run_time,Max_length+1);
 
-IS_Krylov_SRHT_CPU=zeros(run_time,Max_length+1);
-IS_Krylov_SRHT_error=zeros(run_time,Max_length+1);
+IS_Krylov_SRHT_CPU=nan(run_time,Max_length+1);
+IS_Krylov_SRHT_error=nan(run_time,Max_length+1); 
 
 %% run and store the numerical results
 for ii=1:run_time
@@ -41,16 +51,17 @@ for ii=1:run_time
     opts.xstar=xLS;
     opts.Max_iter=Max_length;
     opts.TOL1=eps^2;
+    % opts.TOL1=10^(-30);
     opts.TOL=10^(-30);
     opts.Pre_iter=10;
 
-    %% IS-Krylov method with parition sampling
+    %% IS-Krylov method with partition sampling
     [xIS_Krylov_PS,OutIS_Krylov_PS]=My_IS_Krylov_PS(A,b,q,opts);
 
-    %% IS-Krylov method with Countsketch
+    %% IS-Krylov method with CountSketch
     [xIS_Krylov_CS,OutIS_Krylov_CS]=My_IS_Krylov_CS(A,b,q,opts);
 
-    %% IS-Krylov method with Guassian sketch
+    %% IS-Krylov method with Gaussian sketch
     [xIS_Krylov_GS,OutIS_Krylov_GS]=My_IS_Krylov_GS(A,b,q,opts);
 
     %% IS-Krylov method with SRHT
@@ -84,6 +95,7 @@ lightmagenta =   [1 0.9 1];
 mediummagenta =  [1 0.6 1];
 lightyellow =[0.99 0.99 0.62];
 mediumyellow =[0.91 0.91 .02];
+
 
 %% plot
 close all
@@ -119,7 +131,7 @@ y4q25=quantile(y4,0.25,2);
 y4q75=quantile(y4,0.75,2);
 
 %% plot the iterations
-figure
+figure('Position', [100, 100, 560, 420])
 h = fill([xlable  fliplr(xlable)], [miny2 fliplr(maxy2)],'blue','EdgeColor', 'none');
 set(h,'facealpha', .05)
 hold on
@@ -154,14 +166,26 @@ p1=semilogy( xlable, median(y1'), 'red', 'LineWidth', 1,...
     'LineStyle', ':', 'DisplayName', 'IS_Krylov_PS');
 set(gca, 'YScale', 'log')
 ylim([10^(-12), 1])
-xlim([0, 1200])
+xlim([0, Max_length])
 ylabel('RSE','Interpreter', 'latex')
 xlabel('Number of iterations','Interpreter', 'latex')
 legend([p1 p2 p3 p4],{'IS-Krylov-PS','IS-Krylov-CS','IS-Krylov-GS','IS-Krylov-SRHT'},'Interpreter', 'latex','location', 'best')
 txt=title(['$\kappa=$ ',num2str(kappa),', $r=$ ',num2str(r)]);
 set(txt, 'Interpreter', 'latex');
+box on
+set(gca, ...
+    'LineWidth', 1.2, ...
+    'FontSize', 14, ...
+    'FontWeight', 'bold', ...
+    'TickDir', 'in', ...
+    'Layer', 'top')
+
+set(findall(gcf, 'Type', 'Line'), 'LineWidth', 1.8)
+set(findall(gcf, 'Type', 'Legend'), 'FontSize', 13)
 %% plot the CPU
-figure
+
+figure('Position', [100, 100, 560, 420])
+hold on
 h = fill([median(IS_Krylov_CS_CPU)  fliplr(median(IS_Krylov_CS_CPU))], [miny2 fliplr(maxy2)],'blue','EdgeColor', 'none');
 set(h,'facealpha', .05)
 hold on
@@ -200,7 +224,8 @@ p1=semilogy( median(IS_Krylov_PS_CPU), median(y1'), 'red', 'LineWidth', 1,...
 hold on
 set(gca, 'YScale', 'log')
 
-xlim([-0.01,0.7]);
+x_max=max(max([IS_Krylov_CS_CPU,IS_Krylov_GS_CPU,IS_Krylov_SRHT_CPU,IS_Krylov_PS_CPU]));
+xlim([-0.01,CPU_max]);
 ylim([10^(-12),10^(0)]);
 ylabel('RSE','Interpreter', 'latex')
 xlabel('CPU','Interpreter', 'latex')
@@ -209,3 +234,13 @@ txt=title(['$\kappa=$ ',num2str(kappa),', $r=$ ',num2str(r)]);
 set(txt, 'Interpreter', 'latex');
 legend([p1 p2 p3 p4],{'IS-Krylov-PS','IS-Krylov-CS','IS-Krylov-GS','IS-Krylov-SRHT'},'Interpreter', 'latex','location', 'best')
 set(gca, 'YScale', 'log')
+box on
+set(gca, ...
+    'LineWidth', 1.2, ...
+    'FontSize', 14, ...
+    'FontWeight', 'bold', ...
+    'TickDir', 'in', ...
+    'Layer', 'top')
+
+set(findall(gcf, 'Type', 'Line'), 'LineWidth', 1.8)
+set(findall(gcf, 'Type', 'Legend'), 'FontSize', 13)
